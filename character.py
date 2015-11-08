@@ -1,6 +1,7 @@
 from collections import namedtuple
 from math import sqrt
 from numpy import exp
+import pandas as pd
 
 
 class Blob(object):
@@ -66,6 +67,9 @@ class EllipticalBlob(Blob):
 
 
 class RectangularBlob(Blob):
+    """Blobs which are just uniform on the whole domain, but are truncated to
+    between two values along one trait.
+    """
     def __init__(self, trait, start, stop):
         pass
 
@@ -105,30 +109,6 @@ class Character(object):
 
 
 class Beliefs(object);
+    """Correlations between traits?"""
     pass
-
-
-"""
-    # Correlations between traits
-    {
-        'trait1': {
-            'trait1': 0,
-            'trait2': -1,
-        },
-    }
-
-
-  | S | I | P
---------------
-S | 0 |   |
---------------
-I |   | 0 |  
---------------
-P |   |   | 0
-
-
-
-
-
-"""
 
