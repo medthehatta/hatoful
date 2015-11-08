@@ -10,6 +10,9 @@ class Blob(object):
     def inner(self, other):
         pass
 
+    def normalization(self):
+        return sqrt(self.inner(self))
+
 
 class EllipticalBlob(Blob):
     """Hyper-Ellipsoidal blob with principal axes aligned with the traits
