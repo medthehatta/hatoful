@@ -1,5 +1,6 @@
 from collections import namedtuple
-import math
+from math import sqrt
+from numpy import exp
 
 
 class Blob(object):
@@ -11,11 +12,54 @@ class Blob(object):
 
 
 class EllipticalBlob(Blob):
-    def __init__(self, center, variance):
+    """Hyper-Ellipsoidal blob with principal axes aligned with the traits
+    Oblique blobs are too complicated.
+    """
+    def __init__(self, center, variances):
+        self.center = center
+        self.variances = variances
         pass
 
     def inner(self, other):
-        pass
+        """Integral of the product of the pdfs over the domain"""
+        if type(other) is EllipticalBlob:
+            # Below is a taylor series of the joint pdf.  (Thanks, Wolfram
+            # alpha).
+            # Integrating the actual expression gives some weird nonstandard
+            # functions, so we just use the taylor series
+            # TODO: This still needs to be integrated over the domain to get
+            # the inner product.
+            ms = self.center
+            ls = self.variances
+            mo = other.center
+            lo = other.variances
+
+            # This expression which appears frequently is the harmonic mean of
+            # ls and lo, which is kinda cool.
+            h = (ls + lo)/(ls*lo)
+
+            # The joint pdf is a polynomial in h with coefficients that have
+            # alternating sign.
+            h_poly = [h**i for i in range(8)]
+
+            # These coefficients are the reciprocals; they'll be flipped in the
+            # final expression.
+            reciprocal_coeffs = [1, -2, 81, -48, 384, -3840, 46080, -645120]
+
+            # The result is all multiplied by a factor of this xp below
+            xp = exp(0.5*(ms/ls - mo/lo))
+
+            joint_pdf_taylor =
+                xp * sum(c1/c2 for (c1, c2) in zip(h_poly, reciprocal_coeffs))
+
+        elif type(other) is RectangularBlob:
+            pass
+
+        else:
+            raise ValueError(
+                'Must take inner product between EllipticalBlobs '
+                'or RectangularBlobs'
+            )
 
 
 class RectangularBlob(Blob):
@@ -36,7 +80,7 @@ class TraitDistribution(object);
 
     def inner(self, blob):
         inners = [blob.inner(our_blob) for our_blob in self.blobs]
-        return math.sqrt(sum(x*x for x in inners))
+        return sqrt(sum(x*x for x in inners))
 
     def normalize(self):
         pass
