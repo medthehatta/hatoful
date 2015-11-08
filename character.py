@@ -1,6 +1,7 @@
 from collections import namedtuple
 from math import sqrt
 from numpy import exp
+from itertools import count
 import pandas as pd
 
 
@@ -24,15 +25,13 @@ class EllipticalBlob(Blob):
         self.variances = variances
         pass
 
-    def inner(self, other):
+    def inner(self, other, x_max, x_min):
         """Integral of the product of the pdfs over the domain"""
         if type(other) is EllipticalBlob:
             # Below is a taylor series of the joint pdf.  (Thanks, Wolfram
             # alpha).
             # Integrating the actual expression gives some weird nonstandard
             # functions, so we just use the taylor series
-            # TODO: This still needs to be integrated over the domain to get
-            # the inner product.
             ms = self.center
             ls = self.variances
             mo = other.center
@@ -44,19 +43,25 @@ class EllipticalBlob(Blob):
 
             # The joint pdf is a polynomial in (hx) with coefficients that have
             # alternating sign.
-            # TODO: The x is omittied right now; we will need to integrate over
-            # the domain, which will nuke x.
-            h_poly = [h**i for i in range(8)]
+            h_poly = (h**i for i in count())
 
             # These coefficients are the reciprocals; they'll be flipped in the
             # final expression.
-            reciprocal_coeffs = [1, -2, 81, -48, 384, -3840, 46080, -645120]
+            reciprocal_coeffs = [1, -4, 243, -192, 1920, -23040, 322560]
 
             # The result is all multiplied by a factor of this xp below
             xp = exp(0.5*(ms/ls - mo/lo))
 
-            joint_pdf_taylor =
-                xp * sum(c1/c2 for (c1, c2) in zip(h_poly, reciprocal_coeffs))
+            integrated_joint_pdf_taylor = lambda x:
+                xp * sum(
+                    c1/c2 * x**i
+                    for (c1, c2, i) in zip(h_poly, reciprocal_coeffs, count(1))
+                )
+
+            return product(
+                integrated_joint_pdf_taylor(x_max) - \
+                integrated_joint_pdf_taylor(x_min)
+            )
 
         elif type(other) is RectangularBlob:
             pass
