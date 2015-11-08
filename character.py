@@ -42,8 +42,10 @@ class EllipticalBlob(Blob):
             # ls and lo, which is kinda cool.
             h = (ls + lo)/(ls*lo)
 
-            # The joint pdf is a polynomial in h with coefficients that have
+            # The joint pdf is a polynomial in (hx) with coefficients that have
             # alternating sign.
+            # TODO: The x is omittied right now; we will need to integrate over
+            # the domain, which will nuke x.
             h_poly = [h**i for i in range(8)]
 
             # These coefficients are the reciprocals; they'll be flipped in the
