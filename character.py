@@ -1,8 +1,32 @@
 from collections import namedtuple
-from math import sqrt
-from numpy import exp
+from mpmath import erfi
+from numpy import sqrt, exp, product, pi
 from itertools import count
 import pandas as pd
+
+
+class TraitVectorFactory(object):
+    def __init__(self, traits):
+        self.traits = traits
+
+    def make(self, *lst, **dct):
+        if dct:
+            return pd.Series(**dct)
+
+        elif lst:
+            return pd.Series(lst, index=self.traits)
+
+        else:
+            raise ValueError('Need to provide either a list or dict')
+
+
+class BlobFactory(object):
+    def __init__(self, x_max, x_min):
+        self.x_max = x_max
+        self.x_min = x_min
+
+    def make_elliptical(self, center, variances):
+        return EllipticalBlob(center, variances, self.x_max, self.x_min)
 
 
 class Blob(object):
@@ -20,48 +44,50 @@ class EllipticalBlob(Blob):
     """Hyper-Ellipsoidal blob with principal axes aligned with the traits
     Oblique blobs are too complicated.
     """
-    def __init__(self, center, variances):
+    def __init__(self, center, variances, x_max, x_min):
         self.center = center
         self.variances = variances
-        pass
+        self.x_max = x_max
+        self.x_min = x_min
 
-    def inner(self, other, x_max, x_min):
+    def __repr__(self):
+        return '<EllipticalBlob @{0}>'.format(
+            list(self.center),
+        )
+
+    def inner(self, other):
         """Integral of the product of the pdfs over the domain"""
         if type(other) is EllipticalBlob:
-            # Below is a taylor series of the joint pdf.  (Thanks, Wolfram
-            # alpha).
-            # Integrating the actual expression gives some weird nonstandard
-            # functions, so we just use the taylor series
+            # This is the integral of the product of two diagonal gaussian pdfs
             ms = self.center
             ls = self.variances
             mo = other.center
             lo = other.variances
+            x_max = self.x_max
+            x_min = self.x_min
 
-            # This expression which appears frequently is the harmonic mean of
-            # ls and lo, which is kinda cool.
-            h = (ls + lo)/(ls*lo)
+            a1 = -ms**2/(2*ls**2)
+            a2 = ms/ls**2
+            a3 = -1/(2*ls**2)
 
-            # The joint pdf is a polynomial in (hx) with coefficients that have
-            # alternating sign.
-            h_poly = (h**i for i in count())
+            b1 = -mo**2/(2*lo**2)
+            b2 = mo/lo**2
+            b3 = -1/(2*lo**2)
 
-            # These coefficients are the reciprocals; they'll be flipped in the
-            # final expression.
-            reciprocal_coeffs = [1, -4, 243, -192, 1920, -23040, 322560]
+            z1 = a1 + b1
+            z2 = a2 + b2
+            z3 = a3 + b3
 
-            # The result is all multiplied by a factor of this xp below
-            xp = exp(0.5*(ms/ls - mo/lo))
+            import pdb
+            pdb.set_trace()
+            head = 0.5*sqrt(pi/z3)
+            exp_part = exp(z1 - z2**2/(4*z3))
+            erfi_arg = lambda x: (z2 + 2*x*z3)/(2*sqrt(z3 + 0j))
+            erfi_part = lambda x: erfi_arg(x).apply(erfi)
 
-            integrated_joint_pdf_taylor = lambda x:
-                xp * sum(
-                    c1/c2 * x**i
-                    for (c1, c2, i) in zip(h_poly, reciprocal_coeffs, count(1))
-                )
+            func = lambda x: head * exp_part * erfi_part(x)
 
-            return product(
-                integrated_joint_pdf_taylor(x_max) - \
-                integrated_joint_pdf_taylor(x_min)
-            )
+            return func(x_max) - func(x_min)
 
         elif type(other) is RectangularBlob:
             pass
@@ -84,7 +110,7 @@ class RectangularBlob(Blob):
         pass
 
 
-class TraitDistribution(object);
+class TraitDistribution(object):
     def __init__(self):
         self.blobs = [] # list of blobs
 
@@ -115,7 +141,7 @@ class Character(object):
         self.beliefs = [] # list of Beliefs
 
 
-class Beliefs(object);
+class Beliefs(object):
     """Correlations between traits?"""
     pass
 
