@@ -146,8 +146,8 @@ class RectangularBlob(Blob):
 
 
 class TraitDistribution(object):
-    def __init__(self):
-        self.blobs = [] # list of blobs
+    def __init__(self, blobs=[]):
+        self.blobs = blobs
 
     def add_blob(self, blob):
         self.blobs.append(blob)
