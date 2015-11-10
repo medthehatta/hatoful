@@ -1,6 +1,6 @@
 from collections import namedtuple
 from mpmath import erfi
-from numpy import sqrt, exp, product, pi
+from numpy import sqrt, exp, product, pi, frompyfunc
 from itertools import count
 import pandas as pd
 
@@ -66,28 +66,49 @@ class EllipticalBlob(Blob):
             x_max = self.x_max
             x_min = self.x_min
 
-            a1 = -ms**2/(2*ls**2)
-            a2 = ms/ls**2
-            a3 = -1/(2*ls**2)
+            # Save off the traits so we can reconstitute the answer as a pandas
+            # series.
+            traits = x_max.index
 
-            b1 = -mo**2/(2*lo**2)
-            b2 = mo/lo**2
-            b3 = -1/(2*lo**2)
+            # The exponent of the Gaussian is a quadratic function.  Take the
+            # quadratic coefficients from the Gaussian case so we can use the
+            # integral on an arbitrary "exponential of a quadratic"
+            a0 = -ms**2/(2*ls**2)
+            a1 = ms/ls**2
+            a2 = -1/(2*ls**2)
 
+            # Get the coefficients for the other exponential in the product
+            b0 = -mo**2/(2*lo**2)
+            b1 = mo/lo**2
+            b2 = -1/(2*lo**2)
+
+            # These reduced coefficients are all that are required in the
+            # solution.
+            z0 = a0 + b0
             z1 = a1 + b1
             z2 = a2 + b2
-            z3 = a3 + b3
 
-            import pdb
-            pdb.set_trace()
-            head = 0.5*sqrt(pi/z3)
-            exp_part = exp(z1 - z2**2/(4*z3))
-            erfi_arg = lambda x: (z2 + 2*x*z3)/(2*sqrt(z3 + 0j))
-            erfi_part = lambda x: erfi_arg(x).apply(erfi)
+            # Integral (thanks Wolfram Alpha) is: head * exp_part * erfi_part
+            head = 0.5*sqrt(pi/(z2+0j))
+            exp_part = exp(z0 - z1**2/(4*z2))
 
+            # We got erfi() from mpmath, which uses weird internal types (so it
+            # can do high-precision stuff).  Vectorize erfi with numpy and
+            # apply it to erfi_arg -- the argument to erfi -- which is still a
+            # pandas series.
+            erfi_arg = lambda x: (z1 + 2*x*z2)/(2*sqrt(z2 + 0j))
+            erfi_part = lambda x: frompyfunc(erfi, 1, 1)(erfi_arg(x))
+
+            # Now the function will end up returning a numpy array of mpmath
+            # floats.
             func = lambda x: head * exp_part * erfi_part(x)
 
-            return func(x_max) - func(x_min)
+            res = func(x_max) - func(x_min)
+
+            # By the end of this type-switching nonsense, we have a numpy array
+            # of mpmath complex numbers that we need to turn back into a pandas
+            # series of real python floats.
+            return pd.Series([float(m.real) for m in res], index=traits)
 
         elif type(other) is RectangularBlob:
             pass
