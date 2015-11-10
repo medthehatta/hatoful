@@ -76,12 +76,8 @@ class EllipticalBlob(Blob):
             # the normalization factor existing!  So in the normalization()
             # call, we set normalize to False.  It should be True in every
             # other call.
-            if normalize:
-                norm_self = self.normalization()
-                norm_other = other.normalization()
-            else:
-                norm_self = 1
-                norm_other = 1
+            norm_self = self.normalization() if normalize else 1
+            norm_other = other.normalization() if normalize else 1
 
             # Save off the traits so we can reconstitute the answer as a pandas
             # series.
