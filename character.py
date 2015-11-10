@@ -37,7 +37,7 @@ class Blob(object):
         pass
 
     def normalization(self):
-        return sqrt(self.inner(self))
+        return sqrt(self.inner(self, normalize=False))
 
 
 class EllipticalBlob(Blob):
@@ -55,7 +55,7 @@ class EllipticalBlob(Blob):
             list(self.center),
         )
 
-    def inner(self, other):
+    def inner(self, other, normalize=True):
         """Integral of the product of the pdfs over the domain"""
         if type(other) is EllipticalBlob:
             # This is the integral of the product of two diagonal gaussian pdfs
@@ -63,8 +63,25 @@ class EllipticalBlob(Blob):
             ls = self.variances
             mo = other.center
             lo = other.variances
+
+            # We need the domain to integrate over.  Even though the integral
+            # over the whole space is gonna be finite, the error of omission
+            # won't be large, and other blobs will need to be truncated to a
+            # domain because their integrals would otherwise not be finite.
             x_max = self.x_max
             x_min = self.x_min
+
+            # We actually want these blobs to be normalized over the domain,
+            # but in first computing the normalization factor we can't rely on
+            # the normalization factor existing!  So in the normalization()
+            # call, we set normalize to False.  It should be True in every
+            # other call.
+            if normalize:
+                norm_self = self.normalization()
+                norm_other = other.normalization()
+            else:
+                norm_self = 1
+                norm_other = 1
 
             # Save off the traits so we can reconstitute the answer as a pandas
             # series.
@@ -104,11 +121,12 @@ class EllipticalBlob(Blob):
             func = lambda x: head * exp_part * erfi_part(x)
 
             res = func(x_max) - func(x_min)
+            normed_res = res / (norm_self*norm_other)
 
             # By the end of this type-switching nonsense, we have a numpy array
             # of mpmath complex numbers that we need to turn back into a pandas
             # series of real python floats.
-            return pd.Series([float(m.real) for m in res], index=traits)
+            return pd.Series([float(m.real) for m in normed_res], index=traits)
 
         elif type(other) is RectangularBlob:
             pass
